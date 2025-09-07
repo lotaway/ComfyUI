@@ -56,6 +56,9 @@ def cuda_malloc_supported():
     except:
         names = set()
     for x in names:
+        # Only use in zluda
+        # if "AMD" in x:
+        #     return False
         if "NVIDIA" in x:
             for b in blacklist:
                 if b in x:

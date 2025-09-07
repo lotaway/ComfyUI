@@ -196,8 +196,8 @@ def get_total_memory(dev=None, torch_total_too=False):
         mem_total_torch = mem_total
     else:
         if directml_enabled:
-            mem_total = 1024 * 1024 * 1024 #TODO
-            mem_total_torch = mem_total
+            mem_total_torch = 1024 * 1024 * 1024
+            mem_total = 24 * 1024 * 1024 * 1024 #TODO
         elif is_intel_xpu():
             stats = torch.xpu.memory_stats(dev)
             mem_reserved = stats['reserved_bytes.all.current']
@@ -425,8 +425,25 @@ def get_torch_device_name(device):
     else:
         return "CUDA {}: {}".format(device, torch.cuda.get_device_name(device))
 
-try:
-    logging.info("Device: {}".format(get_torch_device_name(get_torch_device())))
+try:       
+    torch_device_name = get_torch_device_name(get_torch_device())
+
+    if "[ZLUDA]" in torch_device_name:
+        logging.info("Detected ZLUDA, this is experimental and may not work properly.")
+
+        if torch.backends.cudnn.enabled:
+            torch.backends.cudnn.enabled = False
+            logging.info("cuDNN is disabled because ZLUDA does currently not support it.")
+
+        torch.backends.cuda.enable_flash_sdp(True)
+        torch.backends.cuda.enable_math_sdp(False)
+        torch.backends.cuda.enable_mem_efficient_sdp(False)
+
+        if ENABLE_PYTORCH_ATTENTION:
+            logging.info("Disabling pytorch cross attention because it's not supported by ZLUDA.")
+            ENABLE_PYTORCH_ATTENTION = False
+
+    logging.info("Device:" + torch_device_name)
 except:
     logging.warning("Could not pick default device.")
 
